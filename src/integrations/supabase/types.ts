@@ -14,7 +14,272 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      daily_logs: {
+        Row: {
+          activity_minutes: number | null
+          alcohol: boolean
+          appetite: number | null
+          bloating: number | null
+          blood: boolean
+          created_at: string
+          fatigue: number | null
+          foods: string | null
+          hydration_liters: number | null
+          id: string
+          log_date: string
+          medications: string | null
+          mood: number | null
+          mucus: boolean
+          nausea: number | null
+          notes: string | null
+          pain_level: number | null
+          pain_location: string | null
+          sleep_hours: number | null
+          sleep_quality: number | null
+          smoking: boolean
+          stool_consistency: number | null
+          stool_count: number | null
+          stress: number | null
+          temperature_c: number | null
+          updated_at: string
+          urgency: boolean
+          user_id: string
+          weight_kg: number | null
+        }
+        Insert: {
+          activity_minutes?: number | null
+          alcohol?: boolean
+          appetite?: number | null
+          bloating?: number | null
+          blood?: boolean
+          created_at?: string
+          fatigue?: number | null
+          foods?: string | null
+          hydration_liters?: number | null
+          id?: string
+          log_date?: string
+          medications?: string | null
+          mood?: number | null
+          mucus?: boolean
+          nausea?: number | null
+          notes?: string | null
+          pain_level?: number | null
+          pain_location?: string | null
+          sleep_hours?: number | null
+          sleep_quality?: number | null
+          smoking?: boolean
+          stool_consistency?: number | null
+          stool_count?: number | null
+          stress?: number | null
+          temperature_c?: number | null
+          updated_at?: string
+          urgency?: boolean
+          user_id: string
+          weight_kg?: number | null
+        }
+        Update: {
+          activity_minutes?: number | null
+          alcohol?: boolean
+          appetite?: number | null
+          bloating?: number | null
+          blood?: boolean
+          created_at?: string
+          fatigue?: number | null
+          foods?: string | null
+          hydration_liters?: number | null
+          id?: string
+          log_date?: string
+          medications?: string | null
+          mood?: number | null
+          mucus?: boolean
+          nausea?: number | null
+          notes?: string | null
+          pain_level?: number | null
+          pain_location?: string | null
+          sleep_hours?: number | null
+          sleep_quality?: number | null
+          smoking?: boolean
+          stool_consistency?: number | null
+          stool_count?: number | null
+          stress?: number | null
+          temperature_c?: number | null
+          updated_at?: string
+          urgency?: boolean
+          user_id?: string
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
+      health_profile: {
+        Row: {
+          allergies: string | null
+          created_at: string
+          current_treatment: string | null
+          diagnosis: string | null
+          diagnosis_year: number | null
+          disease_location: string | null
+          notes: string | null
+          other_conditions: string | null
+          past_treatment: string | null
+          smoking: string | null
+          supplements: string | null
+          surgeries: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allergies?: string | null
+          created_at?: string
+          current_treatment?: string | null
+          diagnosis?: string | null
+          diagnosis_year?: number | null
+          disease_location?: string | null
+          notes?: string | null
+          other_conditions?: string | null
+          past_treatment?: string | null
+          smoking?: string | null
+          supplements?: string | null
+          surgeries?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allergies?: string | null
+          created_at?: string
+          current_treatment?: string | null
+          diagnosis?: string | null
+          diagnosis_year?: number | null
+          disease_location?: string | null
+          notes?: string | null
+          other_conditions?: string | null
+          past_treatment?: string | null
+          smoking?: string | null
+          supplements?: string | null
+          surgeries?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lab_results: {
+        Row: {
+          created_at: string
+          id: string
+          marker: string
+          note: string | null
+          taken_on: string
+          unit: string | null
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          marker: string
+          note?: string | null
+          taken_on?: string
+          unit?: string | null
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          marker?: string
+          note?: string | null
+          taken_on?: string
+          unit?: string | null
+          user_id?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          client_message_id: string | null
+          content: string
+          created_at: string
+          id: string
+          parts: Json | null
+          role: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          client_message_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          parts?: Json | null
+          role: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          client_message_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          parts?: Json | null
+          role?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      threads: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
