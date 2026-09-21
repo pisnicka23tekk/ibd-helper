@@ -117,12 +117,14 @@ function ChatPage() {
     const remaining = threads.filter((t) => t.id !== id);
     setThreads(remaining);
     if (id === threadId) {
-      if (remaining.length > 0) {
-        navigate({ to: "/chat/$threadId", params: { threadId: remaining[0].id } });
+      const next = remaining[0];
+      if (next) {
+        navigate({ to: "/chat/$threadId", params: { threadId: next.id } });
       } else {
         navigate({ to: "/chat" });
       }
     }
+
   }
 
   return (
