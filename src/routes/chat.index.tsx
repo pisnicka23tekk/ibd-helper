@@ -48,10 +48,12 @@ function ChatIndex() {
         return;
       }
 
-      if (existing && existing.length > 0) {
-        navigate({ to: "/chat/$threadId", params: { threadId: existing[0].id }, replace: true });
+      const latest = existing?.[0];
+      if (latest) {
+        navigate({ to: "/chat/$threadId", params: { threadId: latest.id }, replace: true });
         return;
       }
+
 
       const { data: created, error: createError } = await supabase
         .from("threads")
