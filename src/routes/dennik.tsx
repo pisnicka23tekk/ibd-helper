@@ -299,8 +299,10 @@ function Trends({ logs, labs }: { logs: DailyLog[]; labs: LabResult[] }) {
   );
 
   useEffect(() => {
-    if (!marker && markers.length > 0) setMarker(markers[0]);
+    const first = markers[0];
+    if (!marker && first) setMarker(first);
   }, [markers, marker]);
+
 
   const logData = useMemo(
     () =>
