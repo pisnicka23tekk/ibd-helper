@@ -14,6 +14,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DennikRouteImport } from './routes/dennik'
 import { Route as ProfilRouteImport } from './routes/profil'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiExtractLabsRouteImport } from './routes/api/extract-labs'
+import { Route as ApiReportRouteImport } from './routes/api/report'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 
@@ -42,6 +44,16 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiExtractLabsRoute = ApiExtractLabsRouteImport.update({
+  id: '/api/extract-labs',
+  path: '/api/extract-labs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReportRoute = ApiReportRouteImport.update({
+  id: '/api/report',
+  path: '/api/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatIndexRoute = ChatIndexRouteImport.update({
   id: '/chat/',
   path: '/chat/',
@@ -59,6 +71,8 @@ export interface FileRoutesByFullPath {
   '/dennik': typeof DennikRoute
   '/profil': typeof ProfilRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/extract-labs': typeof ApiExtractLabsRoute
+  '/api/report': typeof ApiReportRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -68,6 +82,8 @@ export interface FileRoutesByTo {
   '/dennik': typeof DennikRoute
   '/profil': typeof ProfilRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/extract-labs': typeof ApiExtractLabsRoute
+  '/api/report': typeof ApiReportRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat': typeof ChatIndexRoute
 }
@@ -78,6 +94,8 @@ export interface FileRoutesById {
   '/dennik': typeof DennikRoute
   '/profil': typeof ProfilRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/extract-labs': typeof ApiExtractLabsRoute
+  '/api/report': typeof ApiReportRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -89,6 +107,8 @@ export interface FileRouteTypes {
     | '/dennik'
     | '/profil'
     | '/api/chat'
+    | '/api/extract-labs'
+    | '/api/report'
     | '/chat/$threadId'
     | '/chat/'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +118,8 @@ export interface FileRouteTypes {
     | '/dennik'
     | '/profil'
     | '/api/chat'
+    | '/api/extract-labs'
+    | '/api/report'
     | '/chat/$threadId'
     | '/chat'
   id:
@@ -107,6 +129,8 @@ export interface FileRouteTypes {
     | '/dennik'
     | '/profil'
     | '/api/chat'
+    | '/api/extract-labs'
+    | '/api/report'
     | '/chat/$threadId'
     | '/chat/'
   fileRoutesById: FileRoutesById
@@ -117,6 +141,8 @@ export interface RootRouteChildren {
   DennikRoute: typeof DennikRoute
   ProfilRoute: typeof ProfilRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiExtractLabsRoute: typeof ApiExtractLabsRoute
+  ApiReportRoute: typeof ApiReportRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   ChatIndexRoute: typeof ChatIndexRoute
 }
@@ -158,6 +184,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/extract-labs': {
+      id: '/api/extract-labs'
+      path: '/api/extract-labs'
+      fullPath: '/api/extract-labs'
+      preLoaderRoute: typeof ApiExtractLabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/report': {
+      id: '/api/report'
+      path: '/api/report'
+      fullPath: '/api/report'
+      preLoaderRoute: typeof ApiReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat/': {
       id: '/chat/'
       path: '/chat'
@@ -181,6 +221,8 @@ const rootRouteChildren: RootRouteChildren = {
   DennikRoute: DennikRoute,
   ProfilRoute: ProfilRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiExtractLabsRoute: ApiExtractLabsRoute,
+  ApiReportRoute: ApiReportRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   ChatIndexRoute: ChatIndexRoute,
 }
