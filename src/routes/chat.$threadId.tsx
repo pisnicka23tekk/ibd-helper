@@ -381,6 +381,27 @@ function ChatWindow({
                   : "max-w-[95%] rounded-2xl bg-surface px-4 py-3 text-surface-foreground"
               }
             >
+              {messageFiles(message).length ? (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {messageFiles(message).map((file, index) =>
+                    file.mediaType.startsWith("image/") ? (
+                      <img
+                        key={`${file.name}-${index}`}
+                        src={file.url}
+                        alt={file.name}
+                        className="max-h-40 rounded-lg border border-border/40"
+                      />
+                    ) : (
+                      <span
+                        key={`${file.name}-${index}`}
+                        className="flex items-center gap-1 rounded-md bg-background/20 px-2 py-1 text-xs"
+                      >
+                        <Paperclip className="size-3" /> {file.name}
+                      </span>
+                    ),
+                  )}
+                </div>
+              ) : null}
               {message.role === "user" ? (
                 <p className="whitespace-pre-wrap">{messageText(message)}</p>
               ) : (
