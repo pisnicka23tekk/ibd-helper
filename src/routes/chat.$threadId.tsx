@@ -39,6 +39,34 @@ export const Route = createFileRoute("/chat/$threadId")({
   ),
 });
 
+type Attachment = { name: string; mediaType: string; url: string };
+
+const ACCEPTED = "image/*,application/pdf";
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function messageFiles(message: UIMessage): Attachment[] {
+  return message.parts.flatMap((part) =>
+    part.type === "file"
+      ? [
+          {
+            name: (part as { filename?: string }).filename ?? "příloha",
+            mediaType: (part as { mediaType: string }).mediaType,
+            url: (part as { url: string }).url,
+          },
+        ]
+      : [],
+  );
+}
+
 function messageText(message: UIMessage): string {
   return message.parts
     .map((part) => (part.type === "text" ? part.text : ""))
