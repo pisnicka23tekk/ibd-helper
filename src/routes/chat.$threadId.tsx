@@ -190,6 +190,8 @@ function ChatWindow({
   onThreadsChanged: () => void;
 }) {
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const savedIds = useRef<Set<string>>(new Set(initialMessages.map((m) => m.id)));
