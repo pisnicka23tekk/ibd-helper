@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, SendHorizontal, Trash2 } from "lucide-react";
+import { Paperclip, Plus, SendHorizontal, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,34 @@ export const Route = createFileRoute("/chat/$threadId")({
     </RequireAuth>
   ),
 });
+
+type Attachment = { name: string; mediaType: string; url: string };
+
+const ACCEPTED = "image/*,application/pdf";
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function messageFiles(message: UIMessage): Attachment[] {
+  return message.parts.flatMap((part) =>
+    part.type === "file"
+      ? [
+          {
+            name: (part as { filename?: string }).filename ?? "příloha",
+            mediaType: (part as { mediaType: string }).mediaType,
+            url: (part as { url: string }).url,
+          },
+        ]
+      : [],
+  );
+}
 
 function messageText(message: UIMessage): string {
   return message.parts
@@ -190,6 +218,8 @@ function ChatWindow({
   onThreadsChanged: () => void;
 }) {
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const savedIds = useRef<Set<string>>(new Set(initialMessages.map((m) => m.id)));
@@ -257,23 +287,55 @@ function ChatWindow({
     if (!isLoading) textareaRef.current?.focus();
   }, [isLoading, threadId]);
 
+  async function addFiles(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    const next: Attachment[] = [];
+    for (const file of Array.from(fileList)) {
+      if (file.size > MAX_FILE_BYTES) {
+        toast.error(`${file.name} je větší než 10 MB`);
+        continue;
+      }
+      if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+        toast.error(`${file.name}: podporované jsou obrázky a PDF`);
+        continue;
+      }
+      next.push({ name: file.name, mediaType: file.type, url: await readAsDataUrl(file) });
+    }
+    if (next.length) setAttachments((prev) => [...prev, ...next]);
+  }
+
   async function submit() {
     const text = input.trim();
-    if (!text || isLoading) return;
+    if ((!text && attachments.length === 0) || isLoading) return;
+    const files = attachments;
+    const promptText =
+      text || "Přikládám dokument s výsledky, prosím o jeho vyhodnocení v kontextu mé léčby.";
     setInput("");
+    setAttachments([]);
 
     const isFirst = messages.length === 0;
-    await sendMessage({ text });
+    await sendMessage({
+      text: promptText,
+      files: files.map((file) => ({
+        type: "file" as const,
+        mediaType: file.mediaType,
+        filename: file.name,
+        url: file.url,
+      })),
+    });
+    const storedContent = files.length
+      ? `${promptText}\n\n_Přílohy: ${files.map((f) => f.name).join(", ")}_`
+      : promptText;
     await supabase.from("messages").insert({
       thread_id: threadId,
       user_id: userId,
       role: "user",
-      content: text,
+      content: storedContent,
     });
     if (isFirst) {
       await supabase
         .from("threads")
-        .update({ title: text.slice(0, 60) })
+        .update({ title: promptText.slice(0, 60) })
         .eq("id", threadId);
       onThreadsChanged();
     }
@@ -319,6 +381,27 @@ function ChatWindow({
                   : "max-w-[95%] rounded-2xl bg-surface px-4 py-3 text-surface-foreground"
               }
             >
+              {messageFiles(message).length ? (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {messageFiles(message).map((file, index) =>
+                    file.mediaType.startsWith("image/") ? (
+                      <img
+                        key={`${file.name}-${index}`}
+                        src={file.url}
+                        alt={file.name}
+                        className="max-h-40 rounded-lg border border-border/40"
+                      />
+                    ) : (
+                      <span
+                        key={`${file.name}-${index}`}
+                        className="flex items-center gap-1 rounded-md bg-background/20 px-2 py-1 text-xs"
+                      >
+                        <Paperclip className="size-3" /> {file.name}
+                      </span>
+                    ),
+                  )}
+                </div>
+              ) : null}
               {message.role === "user" ? (
                 <p className="whitespace-pre-wrap">{messageText(message)}</p>
               ) : (
@@ -335,8 +418,55 @@ function ChatWindow({
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-border p-3">
+      <div
+        className="border-t border-border p-3"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          void addFiles(e.dataTransfer.files);
+        }}
+      >
+        {attachments.length ? (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {attachments.map((file, index) => (
+              <span
+                key={`${file.name}-${index}`}
+                className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs"
+              >
+                <Paperclip className="size-3" />
+                <span className="max-w-[160px] truncate">{file.name}</span>
+                <button
+                  onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
+                  aria-label={`Odebrat ${file.name}`}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
         <div className="flex items-end gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED}
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              void addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            className="btn-ghost"
+            aria-label="Nahrát PDF nebo fotografii"
+            title="Nahrát PDF nebo fotografii"
+          >
+            <Paperclip className="size-4" />
+          </button>
           <textarea
             ref={textareaRef}
             value={input}
@@ -353,7 +483,7 @@ function ChatWindow({
           />
           <button
             onClick={() => void submit()}
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || (!input.trim() && attachments.length === 0)}
             className="btn-primary"
             aria-label="Odeslat"
           >
