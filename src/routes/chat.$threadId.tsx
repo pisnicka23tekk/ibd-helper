@@ -418,8 +418,55 @@ function ChatWindow({
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-border p-3">
+      <div
+        className="border-t border-border p-3"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          void addFiles(e.dataTransfer.files);
+        }}
+      >
+        {attachments.length ? (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {attachments.map((file, index) => (
+              <span
+                key={`${file.name}-${index}`}
+                className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs"
+              >
+                <Paperclip className="size-3" />
+                <span className="max-w-[160px] truncate">{file.name}</span>
+                <button
+                  onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
+                  aria-label={`Odebrat ${file.name}`}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
         <div className="flex items-end gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED}
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              void addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            className="btn-ghost"
+            aria-label="Nahrát PDF nebo fotografii"
+            title="Nahrát PDF nebo fotografii"
+          >
+            <Paperclip className="size-4" />
+          </button>
           <textarea
             ref={textareaRef}
             value={input}
