@@ -483,7 +483,7 @@ function ChatWindow({
           />
           <button
             onClick={() => void submit()}
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || (!input.trim() && attachments.length === 0)}
             className="btn-primary"
             aria-label="Odeslat"
           >
