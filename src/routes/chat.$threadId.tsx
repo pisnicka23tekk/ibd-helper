@@ -287,23 +287,55 @@ function ChatWindow({
     if (!isLoading) textareaRef.current?.focus();
   }, [isLoading, threadId]);
 
+  async function addFiles(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    const next: Attachment[] = [];
+    for (const file of Array.from(fileList)) {
+      if (file.size > MAX_FILE_BYTES) {
+        toast.error(`${file.name} je větší než 10 MB`);
+        continue;
+      }
+      if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+        toast.error(`${file.name}: podporované jsou obrázky a PDF`);
+        continue;
+      }
+      next.push({ name: file.name, mediaType: file.type, url: await readAsDataUrl(file) });
+    }
+    if (next.length) setAttachments((prev) => [...prev, ...next]);
+  }
+
   async function submit() {
     const text = input.trim();
-    if (!text || isLoading) return;
+    if ((!text && attachments.length === 0) || isLoading) return;
+    const files = attachments;
+    const promptText =
+      text || "Přikládám dokument s výsledky, prosím o jeho vyhodnocení v kontextu mé léčby.";
     setInput("");
+    setAttachments([]);
 
     const isFirst = messages.length === 0;
-    await sendMessage({ text });
+    await sendMessage({
+      text: promptText,
+      files: files.map((file) => ({
+        type: "file" as const,
+        mediaType: file.mediaType,
+        filename: file.name,
+        url: file.url,
+      })),
+    });
+    const storedContent = files.length
+      ? `${promptText}\n\n_Přílohy: ${files.map((f) => f.name).join(", ")}_`
+      : promptText;
     await supabase.from("messages").insert({
       thread_id: threadId,
       user_id: userId,
       role: "user",
-      content: text,
+      content: storedContent,
     });
     if (isFirst) {
       await supabase
         .from("threads")
-        .update({ title: text.slice(0, 60) })
+        .update({ title: promptText.slice(0, 60) })
         .eq("id", threadId);
       onThreadsChanged();
     }
