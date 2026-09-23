@@ -68,15 +68,13 @@ export const Route = createFileRoute("/api/chat")({
     handlers: {
       POST: async ({ request }) => {
         try {
-          await requireUser(request);
-          const body = (await readJson(request)) as { messages?: unknown; context?: unknown };
-          const messages = sanitizeMessages(body.messages);
-
+          const userId = await requireUser(request);;
+          const body = (await readJson(request)) as { messages?: unknown };
+const messages = sanitizeMessages(body.messages);
           const apiKey = process.env["LOVABLE_API_KEY"];
           if (!apiKey) return new Response("Asistent není nakonfigurován", { status: 500 });
 
-          const contextText =
-            typeof body.context === "string" ? body.context.slice(0, 20000) : undefined;
+const contextText = await buildPatientContext(userId);
           const isFirstTurn = messages.filter((m) => m.role === "assistant").length === 0;
           const system =
             IBD_SYSTEM_PROMPT +
