@@ -62,6 +62,7 @@ function validDate(value: unknown): string | null {
 
 function cleanText(value: unknown, max: number): string | null {
   if (typeof value !== "string") return null;
+  // eslint-disable-next-line no-control-regex
   const t = value.replace(/[\u0000-\u001f\u007f<>]/g, "").trim();
   return t ? t.slice(0, max) : null;
 }
