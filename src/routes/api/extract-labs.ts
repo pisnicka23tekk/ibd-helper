@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createClient } from "@supabase/supabase-js";
 import { generateText, type ModelMessage } from "ai";
 
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { errorResponse, MAX_FILES, readJson, requireUser, validateDataUrl } from "@/lib/api-guard.server";
 
 type IncomingFile = { name?: unknown; mediaType?: unknown; url?: unknown };
 type ExtractBody = { files?: unknown };
@@ -44,96 +44,97 @@ function parseJsonBlock(text: string): unknown {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+function validDate(value: unknown): string | null {
+  if (typeof value !== "string" || !ISO_DATE.test(value)) return null;
+  const d = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value) return null;
+  const year = d.getUTCFullYear();
+  // No future dates (1 day tolerance for time zones) and nothing absurdly old.
+  if (year < 1950 || d.getTime() > Date.now() + 86400000) return null;
+  return value;
+}
+
+function cleanText(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const t = value.replace(/[\u0000-\u001f\u007f<>]/g, "").trim();
+  return t ? t.slice(0, max) : null;
+}
+
+function parseValue(raw: unknown): number | null {
+  const n =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string" && /^\s*-?\d+(?:[.,]\d+)?\s*$/.test(raw)
+        ? Number(raw.replace(",", "."))
+        : NaN;
+  // Lab values are finite, non-negative and within a sane magnitude.
+  if (!Number.isFinite(n) || n < 0 || n > 1_000_000) return null;
+  return Math.round(n * 10000) / 10000;
+}
+
 export const Route = createFileRoute("/api/extract-labs")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const token = (request.headers.get("authorization") ?? "")
-          .replace(/^Bearer\s+/i, "")
-          .trim();
-        if (!token) return new Response("Nepřihlášený uživatel", { status: 401 });
-
-        const supabaseUrl = process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"];
-        const publishableKey =
-          process.env["SUPABASE_PUBLISHABLE_KEY"] ??
-          process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
-        if (!supabaseUrl || !publishableKey) {
-          return new Response("Backend není nakonfigurován", { status: 500 });
-        }
-        const supabase = createClient(supabaseUrl, publishableKey, {
-          auth: { persistSession: false, autoRefreshToken: false },
-        });
-        const { data: userData, error: userError } = await supabase.auth.getUser(token);
-        if (userError || !userData?.user) {
-          return new Response("Neplatné přihlášení", { status: 401 });
-        }
-
-        const body = (await request.json()) as ExtractBody;
-        const files = Array.isArray(body.files) ? (body.files as IncomingFile[]) : [];
-        const usable = files.filter(
-          (f) => typeof f.url === "string" && typeof f.mediaType === "string",
-        );
-        if (!usable.length) return new Response("Chybí soubor", { status: 400 });
-
-        const apiKey = process.env["LOVABLE_API_KEY"];
-        if (!apiKey) return new Response("Chybí LOVABLE_API_KEY", { status: 500 });
-
-        const messages: ModelMessage[] = [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: EXTRACT_PROMPT },
-              ...usable.map((f) => ({
-                type: "file" as const,
-                data: new URL(f.url as string),
-                mediaType: f.mediaType as string,
-                filename: typeof f.name === "string" ? f.name : undefined,
-              })),
-            ],
-          },
-        ];
-
         try {
+          await requireUser(request);
+          const body = (await readJson(request)) as ExtractBody;
+          const files = Array.isArray(body.files) ? (body.files as IncomingFile[]) : [];
+          if (!files.length) return new Response("Chybí soubor", { status: 400 });
+          if (files.length > MAX_FILES) return new Response("Příliš mnoho souborů", { status: 400 });
+          const usable = files.map((f) => ({
+            ...validateDataUrl(f.url, f.mediaType),
+            name: cleanText(f.name, 200) ?? undefined,
+          }));
+
+          const apiKey = process.env["LOVABLE_API_KEY"];
+          if (!apiKey) return new Response("Služba není nakonfigurována", { status: 500 });
+
+          const messages: ModelMessage[] = [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: EXTRACT_PROMPT },
+                ...usable.map((f) => ({
+                  type: "file" as const,
+                  data: f.url,
+                  mediaType: f.mediaType,
+                  filename: f.name,
+                })),
+              ],
+            },
+          ];
+
           const gateway = createLovableAiGatewayProvider(apiKey);
           const { text } = await generateText({
             model: gateway("google/gemini-3.7-flash"),
             messages,
             abortSignal: request.signal,
+            maxRetries: 0,
           });
 
-          const parsed = parseJsonBlock(text) as
-            | { taken_on?: unknown; items?: unknown }
-            | null;
-          const fallbackDate =
-            typeof parsed?.taken_on === "string" && ISO_DATE.test(parsed.taken_on)
-              ? parsed.taken_on
-              : null;
-          const rawItems = Array.isArray(parsed?.items) ? parsed!.items : [];
+          const parsed = parseJsonBlock(text) as { taken_on?: unknown; items?: unknown } | null;
+          const fallbackDate = validDate(parsed?.taken_on);
+          const rawItems = Array.isArray(parsed?.items) ? parsed.items : [];
+          const seen = new Set<string>();
 
           const items = rawItems
             .map((item) => {
+              if (item == null || typeof item !== "object") return null;
               const row = item as Record<string, unknown>;
-              const marker = typeof row["marker"] === "string" ? row["marker"].trim() : "";
-              const value =
-                typeof row["value"] === "number"
-                  ? row["value"]
-                  : typeof row["value"] === "string" && row["value"].trim() !== ""
-                    ? Number(String(row["value"]).replace(",", "."))
-                    : null;
-              if (!marker || value === null || Number.isNaN(value)) return null;
-              const itemDate =
-                typeof row["taken_on"] === "string" && ISO_DATE.test(row["taken_on"])
-                  ? row["taken_on"]
-                  : fallbackDate;
+              const marker = cleanText(row["marker"], 80);
+              const value = parseValue(row["value"]);
+              if (!marker || value === null) return null;
+              const taken_on = validDate(row["taken_on"]) ?? fallbackDate;
+              const key = `${marker.toLowerCase()}|${value}|${taken_on}`;
+              if (seen.has(key)) return null;
+              seen.add(key);
               return {
                 marker,
                 value,
-                unit: typeof row["unit"] === "string" && row["unit"].trim() ? row["unit"].trim() : null,
-                reference:
-                  typeof row["reference"] === "string" && row["reference"].trim()
-                    ? row["reference"].trim()
-                    : null,
-                taken_on: itemDate,
+                unit: cleanText(row["unit"], 30),
+                reference: cleanText(row["reference"], 60),
+                taken_on,
               };
             })
             .filter((row): row is NonNullable<typeof row> => row !== null)
@@ -141,6 +142,8 @@ export const Route = createFileRoute("/api/extract-labs")({
 
           return Response.json({ taken_on: fallbackDate, items });
         } catch (error) {
+          const handled = errorResponse(error);
+          if (handled) return handled;
           console.error("extract-labs error", error);
           const status =
             error != null && typeof error === "object" && "statusCode" in error
@@ -152,7 +155,7 @@ export const Route = createFileRoute("/api/extract-labs")({
               : status === 402
                 ? "Vyčerpaný AI kredit tohoto projektu."
                 : "Hodnoty se nepodařilo přečíst. Zkuste to prosím znovu.";
-          return new Response(message, { status: status >= 400 && status < 600 ? status : 500 });
+          return new Response(message, { status: status === 429 || status === 402 ? status : 500 });
         }
       },
     },
