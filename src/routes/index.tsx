@@ -63,8 +63,8 @@ function Landing() {
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground">
           Zaznamenávejte symptomy, léky a laboratorní výsledky. Asistent hledá trendy a skryté
-          souvislosti, rozlišuje symptomy od skutečné zánětlivé aktivity a připraví vás na
-          rozhovor s lékařem.
+          souvislosti, rozlišuje symptomy od skutečné zánětlivé aktivity a připraví vás na rozhovor
+          s lékařem.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link to="/auth" className="btn-primary">

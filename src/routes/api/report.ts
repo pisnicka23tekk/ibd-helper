@@ -71,7 +71,9 @@ export const Route = createFileRoute("/api/report")({
           const handled = errorResponse(error);
           if (handled) return handled;
           console.error("report error", error);
-          return new Response("Souhrn se teď nepodařilo vytvořit. Zkuste to prosím znovu.", { status: 500 });
+          return new Response("Souhrn se teď nepodařilo vytvořit. Zkuste to prosím znovu.", {
+            status: 500,
+          });
         }
       },
     },

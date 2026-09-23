@@ -152,7 +152,6 @@ function ChatPage() {
         navigate({ to: "/chat" });
       }
     }
-
   }
 
   return (
@@ -170,9 +169,7 @@ function ChatPage() {
               }`}
             >
               <button
-                onClick={() =>
-                  navigate({ to: "/chat/$threadId", params: { threadId: thread.id } })
-                }
+                onClick={() => navigate({ to: "/chat/$threadId", params: { threadId: thread.id } })}
                 className="flex-1 truncate px-2 py-2 text-left text-sm"
               >
                 {thread.title}

@@ -46,8 +46,18 @@ export async function buildHealthContext(): Promise<string> {
   if (!userId) return "";
   const [profileRes, logsRes, labsRes] = await Promise.all([
     supabase.from("health_profile").select("*").eq("user_id", userId).maybeSingle(),
-    supabase.from("daily_logs").select("*").eq("user_id", userId).order("log_date", { ascending: false }).limit(60),
-    supabase.from("lab_results").select("*").eq("user_id", userId).order("taken_on", { ascending: false }).limit(80),
+    supabase
+      .from("daily_logs")
+      .select("*")
+      .eq("user_id", userId)
+      .order("log_date", { ascending: false })
+      .limit(60),
+    supabase
+      .from("lab_results")
+      .select("*")
+      .eq("user_id", userId)
+      .order("taken_on", { ascending: false })
+      .limit(80),
   ]);
 
   const sections: string[] = [];

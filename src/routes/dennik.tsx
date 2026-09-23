@@ -303,7 +303,6 @@ function Trends({ logs, labs }: { logs: DailyLog[]; labs: LabResult[] }) {
     if (!marker && first) setMarker(first);
   }, [markers, marker]);
 
-
   const logData = useMemo(
     () =>
       [...logs]

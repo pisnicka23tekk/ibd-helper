@@ -45,13 +45,33 @@ const fields = [
     hint: "léky, dávky, jak dlouho",
     long: true,
   },
-  { key: "past_treatment", label: "Předchozí léčba", hint: "co bylo zkoušeno a proč skončilo", long: true },
-  { key: "surgeries", label: "Operace a výkony", hint: "resekce, stomie, drenáže, datum", long: true },
-  { key: "other_conditions", label: "Další nemoci", hint: "např. anémie, artritida, štítná žláza", long: true },
+  {
+    key: "past_treatment",
+    label: "Předchozí léčba",
+    hint: "co bylo zkoušeno a proč skončilo",
+    long: true,
+  },
+  {
+    key: "surgeries",
+    label: "Operace a výkony",
+    hint: "resekce, stomie, drenáže, datum",
+    long: true,
+  },
+  {
+    key: "other_conditions",
+    label: "Další nemoci",
+    hint: "např. anémie, artritida, štítná žláza",
+    long: true,
+  },
   { key: "allergies", label: "Alergie a intolerance", hint: "léky, potraviny", long: true },
   { key: "supplements", label: "Doplňky stravy", hint: "železo, vitamin D, B12…", long: true },
   { key: "smoking", label: "Kouření", hint: "nekuřák / kuřák / bývalý kuřák, kolik" },
-  { key: "notes", label: "Další poznámky", hint: "cokoli důležitého pro dlouhodobé sledování", long: true },
+  {
+    key: "notes",
+    label: "Další poznámky",
+    hint: "cokoli důležitého pro dlouhodobé sledování",
+    long: true,
+  },
 ] as const;
 
 function ProfilePage() {
@@ -105,8 +125,8 @@ function ProfilePage() {
     <section className="panel p-5">
       <h1 className="text-xl font-semibold">Zdravotní profil</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Tyto údaje má asistent k dispozici při každé analýze. Vyplňujte postupně — i částečný
-        profil pomůže.
+        Tyto údaje má asistent k dispozici při každé analýze. Vyplňujte postupně — i částečný profil
+        pomůže.
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">

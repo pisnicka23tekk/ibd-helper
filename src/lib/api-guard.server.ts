@@ -32,7 +32,8 @@ export async function requireUser(request: Request): Promise<string> {
     global: {
       fetch: (input, init) => {
         const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
+        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`)
+          h.delete("Authorization");
         h.set("apikey", key);
         return fetch(input, { ...init, headers: h });
       },
@@ -60,14 +61,19 @@ export async function readJson(request: Request, maxBytes = MAX_BODY_BYTES): Pro
  * Accepts only inline base64 data URLs of allowed types and size.
  * Remote URLs are rejected so the server never fetches attacker-chosen addresses.
  */
-export function validateDataUrl(url: unknown, mediaType: unknown): { url: string; mediaType: string } {
-  if (typeof url !== "string" || typeof mediaType !== "string") throw new HttpError(400, "Neplatná příloha");
+export function validateDataUrl(
+  url: unknown,
+  mediaType: unknown,
+): { url: string; mediaType: string } {
+  if (typeof url !== "string" || typeof mediaType !== "string")
+    throw new HttpError(400, "Neplatná příloha");
   const m = /^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/.exec(url);
   if (!m) throw new HttpError(400, "Příloha musí být nahraný soubor");
   const type = m[1]!.toLowerCase();
   if (!ALLOWED_MEDIA.test(type) || type !== mediaType.toLowerCase()) {
     throw new HttpError(415, "Nepodporovaný typ souboru (jen obrázky a PDF)");
   }
-  if (Math.floor((m[2]!.length * 3) / 4) > MAX_FILE_BYTES) throw new HttpError(413, "Soubor je větší než 10 MB");
+  if (Math.floor((m[2]!.length * 3) / 4) > MAX_FILE_BYTES)
+    throw new HttpError(413, "Soubor je větší než 10 MB");
   return { url, mediaType: type };
 }

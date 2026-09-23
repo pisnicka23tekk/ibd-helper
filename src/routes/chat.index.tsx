@@ -54,7 +54,6 @@ function ChatIndex() {
         return;
       }
 
-
       const { data: created, error: createError } = await supabase
         .from("threads")
         .insert({ user_id: user.id, title: "Výchozí zdravotní profil" })

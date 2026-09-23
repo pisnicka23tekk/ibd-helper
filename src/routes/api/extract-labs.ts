@@ -2,7 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { generateText, type ModelMessage } from "ai";
 
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
-import { errorResponse, MAX_FILES, readJson, requireUser, validateDataUrl } from "@/lib/api-guard.server";
+import {
+  errorResponse,
+  MAX_FILES,
+  readJson,
+  requireUser,
+  validateDataUrl,
+} from "@/lib/api-guard.server";
 
 type IncomingFile = { name?: unknown; mediaType?: unknown; url?: unknown };
 type ExtractBody = { files?: unknown };
@@ -81,7 +87,8 @@ export const Route = createFileRoute("/api/extract-labs")({
           const body = (await readJson(request)) as ExtractBody;
           const files = Array.isArray(body.files) ? (body.files as IncomingFile[]) : [];
           if (!files.length) return new Response("Chybí soubor", { status: 400 });
-          if (files.length > MAX_FILES) return new Response("Příliš mnoho souborů", { status: 400 });
+          if (files.length > MAX_FILES)
+            return new Response("Příliš mnoho souborů", { status: 400 });
           const usable = files.map((f) => ({
             ...validateDataUrl(f.url, f.mediaType),
             name: cleanText(f.name, 200) ?? undefined,
@@ -99,7 +106,7 @@ export const Route = createFileRoute("/api/extract-labs")({
                   type: "file" as const,
                   data: f.url,
                   mediaType: f.mediaType,
-                  filename: f.name,
+                  ...(f.name ? { filename: f.name } : {}),
                 })),
               ],
             },
