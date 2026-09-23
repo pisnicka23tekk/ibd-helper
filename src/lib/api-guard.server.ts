@@ -1,79 +1,140 @@
+ 
 import { createClient } from "@supabase/supabase-js";
 
-/** Max request body for AI endpoints (base64 attachments included). */
-export const MAX_BODY_BYTES = 25 * 1024 * 1024;
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
-export const MAX_FILES = 5;
-const ALLOWED_MEDIA = /^(image\/(png|jpe?g|webp|gif|heic|heif)|application\/pdf)$/i;
+import type { Tables } from "@/integrations/supabase/types";
 
-export class HttpError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
+type DailyLog = Tables<"daily_logs">;
+type LabResult = Tables<"lab_results">;
+type HealthProfile = Tables<"health_profile">;
+
+function line(label: string, value: unknown): string | null {
+  if (value === null || value === undefined || value === "" || value === false) {
+    return null;
   }
+
+  return `${label}: ${value === true ? "ano" : value}`;
 }
 
-export function errorResponse(error: unknown): Response | null {
-  if (error instanceof HttpError) return new Response(error.message, { status: error.status });
-  return null;
+function formatDailyLog(log: DailyLog): string {
+  const parts = [
+    line("bolest (0-10)", log.pain_level),
+    line("lokalizace bolesti", log.pain_location),
+    line("stolice/den", log.stool_count),
+    line("konzistence (Bristol 1-7)", log.stool_consistency),
+    line("krev", log.blood),
+    line("hlen", log.mucus),
+    line("urgence", log.urgency),
+    line("nadýmání", log.bloating),
+    line("nevolnost", log.nausea),
+    line("chuť k jídlu", log.appetite),
+    line("hmotnost kg", log.weight_kg),
+    line("teplota °C", log.temperature_c),
+    line("únava", log.fatigue),
+    line("spánek h", log.sleep_hours),
+    line("kvalita spánku", log.sleep_quality),
+    line("stres", log.stress),
+    line("nálada", log.mood),
+    line("pohyb min", log.activity_minutes),
+    line("tekutiny l", log.hydration_liters),
+    line("alkohol", log.alcohol),
+    line("kouření", log.smoking),
+    line("jídlo", log.foods),
+    line("léky", log.medications),
+    line("poznámka", log.notes),
+  ].filter(Boolean);
+
+  return `- ${log.log_date}: ${parts.join("; ") || "bez údajů"}`;
 }
 
-/** Verifies the bearer token and returns the user id. */
-export async function requireUser(request: Request): Promise<string> {
-  const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  if (!token || token.split(".").length !== 3) throw new HttpError(401, "Nepřihlášený uživatel");
+export async function buildPatientContext(userId: string): Promise<string> {
   const url = process.env["SUPABASE_URL"];
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
-  if (!url || !key) throw new HttpError(500, "Backend není nakonfigurován");
-  const supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`)
-          h.delete("Authorization");
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
+  const serviceRoleKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("Server nemá nakonfigurovaný Supabase service role klíč");
+  }
+
+  const supabase = createClient(url, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
     },
   });
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) throw new HttpError(401, "Neplatné přihlášení");
-  return data.user.id;
-}
 
-/** Reads a JSON body with a hard size cap. */
-export async function readJson(request: Request, maxBytes = MAX_BODY_BYTES): Promise<unknown> {
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (declared > maxBytes) throw new HttpError(413, "Požadavek je příliš velký");
-  const text = await request.text();
-  if (text.length > maxBytes) throw new HttpError(413, "Požadavek je příliš velký");
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new HttpError(400, "Neplatný formát požadavku");
-  }
-}
+  const [profileRes, logsRes, labsRes] = await Promise.all([
+    supabase
+      .from("health_profile")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle(),
 
-/**
- * Accepts only inline base64 data URLs of allowed types and size.
- * Remote URLs are rejected so the server never fetches attacker-chosen addresses.
- */
-export function validateDataUrl(
-  url: unknown,
-  mediaType: unknown,
-): { url: string; mediaType: string } {
-  if (typeof url !== "string" || typeof mediaType !== "string")
-    throw new HttpError(400, "Neplatná příloha");
-  const m = /^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/.exec(url);
-  if (!m) throw new HttpError(400, "Příloha musí být nahraný soubor");
-  const type = m[1]!.toLowerCase();
-  if (!ALLOWED_MEDIA.test(type) || type !== mediaType.toLowerCase()) {
-    throw new HttpError(415, "Nepodporovaný typ souboru (jen obrázky a PDF)");
+    supabase
+      .from("daily_logs")
+      .select("*")
+      .eq("user_id", userId)
+      .order("log_date", { ascending: false })
+      .limit(60),
+
+    supabase
+      .from("lab_results")
+      .select("*")
+      .eq("user_id", userId)
+      .order("taken_on", { ascending: false })
+      .limit(80),
+  ]);
+
+  if (profileRes.error) throw profileRes.error;
+  if (logsRes.error) throw logsRes.error;
+  if (labsRes.error) throw labsRes.error;
+
+  const sections: string[] = [];
+
+  const profile = profileRes.data as HealthProfile | null;
+
+  if (profile) {
+    const rows = [
+      line("diagnóza", profile.diagnosis),
+      line("rok diagnózy", profile.diagnosis_year),
+      line("lokalizace nemoci", profile.disease_location),
+      line("současná léčba", profile.current_treatment),
+      line("předchozí léčba", profile.past_treatment),
+      line("operace", profile.surgeries),
+      line("další nemoci", profile.other_conditions),
+      line("alergie", profile.allergies),
+      line("doplňky stravy", profile.supplements),
+      line("kouření", profile.smoking),
+      line("poznámky", profile.notes),
+    ].filter(Boolean);
+
+    if (rows.length) {
+      sections.push(`ZDRAVOTNÍ PROFIL\n${rows.join("\n")}`);
+    }
   }
-  if (Math.floor((m[2]!.length * 3) / 4) > MAX_FILE_BYTES)
-    throw new HttpError(413, "Soubor je větší než 10 MB");
-  return { url, mediaType: type };
+
+  const logs = (logsRes.data ?? []) as DailyLog[];
+
+  if (logs.length) {
+    sections.push(
+      `DENÍK (posledních ${logs.length} záznamů, od nejnovějšího)\n${logs
+        .map(formatDailyLog)
+        .join("\n")}`,
+    );
+  }
+
+  const labs = (labsRes.data ?? []) as LabResult[];
+
+  if (labs.length) {
+    sections.push(
+      `LABORATORNÍ VÝSLEDKY\n${labs
+        .map(
+          (lab) =>
+            `- ${lab.taken_on} ${lab.marker}: ${lab.value ?? "?"} ${
+              lab.unit ?? ""
+            }${lab.note ? ` (${lab.note})` : ""}`,
+        )
+        .join("\n")}`,
+    );
+  }
+
+  return sections.join("\n\n");
 }
