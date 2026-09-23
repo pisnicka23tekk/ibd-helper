@@ -116,3 +116,4 @@ export const Route = createFileRoute("/api/chat")({
     },
   },
 });
+import { buildPatientContext } from "@/lib/patient-context.server";
