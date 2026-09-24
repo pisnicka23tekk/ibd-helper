@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-});
-import { buildPatientContext } from "@/lib/patient-context.server"
+import { buildPatientContext } from "@/lib/patient-context.server";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
@@ -75,8 +74,7 @@ export const Route = createFileRoute("/api/chat")({
           const messages = sanitizeMessages(body.messages);
           const apiKey = process.env["LOVABLE_API_KEY"];
           if (!apiKey) return new Response("Asistent není nakonfigurován", { status: 500 });
-a
-const contextText = await buildPatientContext(userId);
+          const contextText = await buildPatientContext(userId);
           const isFirstTurn = messages.filter((m) => m.role === "assistant").length === 0;
           const system =
             IBD_SYSTEM_PROMPT +
@@ -115,4 +113,4 @@ const contextText = await buildPatientContext(userId);
       },
     },
   },
-;
+});
