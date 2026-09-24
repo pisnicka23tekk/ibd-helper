@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/use-auth";
 import { AppShell, RequireAuth } from "@/components/AppShell";
 import { Markdown } from "@/components/Markdown";
-import { buildHealthContext } from "@/lib/health-context";
+
 import type { Tables } from "@/integrations/supabase/types";
 
 type Thread = Pick<Tables<"threads">, "id" | "title" | "updated_at">;
@@ -220,22 +220,24 @@ function ChatWindow({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const savedIds = useRef<Set<string>>(new Set(initialMessages.map((m) => m.id)));
-
   const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        prepareSendMessagesRequest: async ({ messages }) => {
-          const { data } = await supabase.auth.getSession();
-          const context = await buildHealthContext();
-          return {
-            headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` },
-            body: { messages, context },
-          };
-        },
-      }),
-    [],
-  );
+  () =>
+    new DefaultChatTransport({
+      api: "/api/chat",
+      prepareSendMessagesRequest: async ({ messages }) => {
+        const { data } = await supabase.auth.getSession();
+
+        return {
+          headers: {
+            Authorization: `Bearer ${data.session?.access_token ?? ""}`,
+          },
+          body: { messages },
+        };
+      },
+    }),
+  [],
+);
+
 
   const persist = useCallback(
     async (message: UIMessage) => {
